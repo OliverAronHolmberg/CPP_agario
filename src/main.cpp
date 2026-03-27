@@ -11,8 +11,18 @@ const int MAPW = 4000;
 const int MAPH = 3000;
 int foodAmount = 1500;
 int enemyAmount = 60;
-bool DebugMode = true;
+bool DebugMode = false;
 bool running = true;
+
+std::list<std::string> names = {
+    "Spectral", "Vortex", "Apex", "Lunar", "Rift", "Zephyr", "Kinetix", "Nova",
+    "Zero", "Echo", "Flux", "Omega", "Solo", "Draft", "Clutch", "Fury",
+    "Alex", "Sam_2004", "Jordan", "Charlie", "Skyler", "Casey", "Riley", "Taylor",
+    "Morgan", "Blake", "Parker", "Jamie", "Quinn", "Avery", "River", "Dakota",
+    "FeedMe", "DontEatMe", "Big_Chungus", "Speedy", "Orbital", "Wobble", "Blobby",
+    "Tiny", "Giant", "The_Void", "Glitch", "Pixel", "NomNom", "Hunter",
+    "...", "???", "!", "A", "Z", "001", "Player", "Guest"
+};
 
 
 
@@ -23,9 +33,18 @@ class Entity{
     float posX;
     float posY;
     Color color = {255, 255, 255, 255};
+    std::string name = "Player";
+    
 
-    void drawEntity(){
+    void drawEntity(bool showName){
         DrawCircleV({posX, posY}, radius, color);
+        if(showName){
+
+            int fontSize  = (int)(radius/2.0f);
+            if(fontSize <10) fontSize = 10.0f;
+            int textWidth = MeasureText(name.c_str(), fontSize);
+            DrawText(name.c_str(), (int)posX-textWidth/2, (int)posY-fontSize/2, fontSize, BLACK);
+        }
     }
 
     
@@ -73,6 +92,7 @@ class Player: public Entity{
         radius = 10.0f;
         posX = 0;
         posY = 0;
+        name = "Player";
 
         camera.target = (Vector2{posX, posY});
         camera.offset = (Vector2{winW/2.0f, winH/2.0f});
@@ -80,6 +100,8 @@ class Player: public Entity{
         camera.zoom = 1.0f;
         
         speed = 200.0f * pow(radius, -0.439);
+
+        
     }
 
     void UpdateCamera(){
@@ -177,10 +199,20 @@ int main(){
         enemy.color = {(unsigned char)GetRandomValue(0, 255), (unsigned char)GetRandomValue(0, 255), (unsigned char)GetRandomValue(0, 255), 255};
         enemy.radius = GetRandomValue(10, 200);
         enemy.speed = 200.0f * pow(enemy.radius, -0.439);
+        
+
+        int randomIDX = GetRandomValue(0, names.size() -1);
+        auto it = names.begin();
+        std::advance(it, randomIDX);
+        enemy.name = *it;
+
         enemyList.push_back(enemy);
+        
+
     }
 
     Player player(enemyList, foodList);
+    player.radius = 200.0f;
 
 
     
@@ -211,15 +243,15 @@ int main(){
                     
 
                 for (auto& food : foodList){
-                    food.drawEntity();
+                    food.drawEntity(false);
                 }
                 for (auto& enemy : enemyList){
-                    enemy.drawEntity();
+                    enemy.drawEntity(true);
                 }
                 
 
                 
-                player.drawEntity();
+                player.drawEntity(true);
 
                 
 
