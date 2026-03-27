@@ -11,6 +11,8 @@ const int MAPW = 4000;
 const int MAPH = 3000;
 int foodAmount = 1500;
 int enemyAmount = 60;
+bool DebugMode = true;
+bool running = true;
 
 
 
@@ -132,7 +134,7 @@ class Player: public Entity{
                     enemy.radius = GetRandomValue(10.0f, 30.0f);
                 }
                 else if(enemy.radius > radius*1.2f){
-                    std::cout<< "Dead\n"; 
+                    // running = false;
                 }
                 
             }
@@ -150,6 +152,8 @@ int main(){
     SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
     InitWindow(winW, winH, "Agario");
     SetTargetFPS(targetFPS);
+
+    
     
     
     std::list<Food> foodList;
@@ -195,11 +199,16 @@ int main(){
         }
 
         BeginDrawing();
-            ClearBackground(BLACK);
-            BeginMode2D(player.camera);
+        ClearBackground(BLACK);
+            if (running){
+                
+                BeginMode2D(player.camera);
 
+                
+                
                 for(int i = -MAPW/2; i<=MAPW/2; i+=200) DrawLine(i, -MAPH/2, i, MAPH/2, DARKGRAY);
                 for(int i = -MAPH/2; i<=MAPH/2; i+=200) DrawLine(-MAPW/2, i, MAPH/2, i, DARKGRAY);
+                    
 
                 for (auto& food : foodList){
                     food.drawEntity();
@@ -207,9 +216,23 @@ int main(){
                 for (auto& enemy : enemyList){
                     enemy.drawEntity();
                 }
+                
+
+                
                 player.drawEntity();
 
+                
+
             EndMode2D();
+            }else{
+                std::cout<<"Meny\n";
+            }
+       
+            
+
+            if(DebugMode){
+                DrawFPS(10, 10);
+            }
         
 
         EndDrawing();
