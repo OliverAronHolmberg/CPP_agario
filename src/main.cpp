@@ -9,6 +9,8 @@ int winH = 720;
 int targetFPS = 60;
 const int MAPW = 4000;
 const int MAPH = 3000;
+int foodAmount = 1500;
+int enemyAmount = 60;
 
 
 
@@ -79,7 +81,7 @@ class Player: public Entity{
     }
 
     void UpdateCamera(){
-        float targetZoom = 40.0f/ radius;
+        float targetZoom = 100.0f/ radius;
         camera.zoom += (targetZoom - camera.zoom) * 0.1f;
         
         camera.target = (Vector2){posX, posY};
@@ -114,6 +116,28 @@ class Player: public Entity{
             }
         }
     }
+
+    void eatEnemy(){
+        for (auto& enemy : *enemies){
+            float dx = posX - enemy.posX;
+            float dy = posY - enemy.posY;
+            float distance = sqrt(dx*dx+dy*dy);
+
+            if (distance < radius || distance < enemy.radius){
+                if(radius > enemy.radius*1.2f){
+                    radius += enemy.radius * 0.2f;
+                    speed = 200.0f * pow(radius, -0.439);
+                    enemy.posX = GetRandomValue(-MAPW/2,MAPW/2);
+                    enemy.posY = GetRandomValue(-MAPH/2, winH/2);
+                    enemy.radius = GetRandomValue(10.0f, 30.0f);
+                }
+                else if(enemy.radius > radius*1.2f){
+                    std::cout<< "Dead\n"; 
+                }
+                
+            }
+        }
+    }
     
 
 };
@@ -130,7 +154,7 @@ int main(){
     
     std::list<Food> foodList;
 
-    for (int i = 0; i<1000; i++){
+    for (int i = 0; i <= foodAmount; i++){
         Food food;
         food.posX = GetRandomValue((-MAPW/2), (MAPW/2));
         food.posY = GetRandomValue((-MAPH/2), (MAPH/2));
@@ -142,7 +166,7 @@ int main(){
     std::list<Enemy> enemyList;
     
 
-    for (int i = 0; i < 60; i++){
+    for (int i = 0; i <= enemyAmount; i++){
         Enemy enemy(foodList);
         enemy.posX = GetRandomValue((-MAPW/2), (MAPW/2));
         enemy.posY = GetRandomValue((-MAPH/2), (MAPH/2));
@@ -163,6 +187,7 @@ int main(){
         
         player.Movement();
         player.eatFood();
+        player.eatEnemy();
         player.UpdateCamera();
 
         for (auto& enemy : enemyList){
