@@ -41,9 +41,11 @@ class Entity{
         if(showName){
 
             int fontSize  = (int)(radius/2.0f);
-            if(fontSize <10) fontSize = 10.0f;
+            
             int textWidth = MeasureText(name.c_str(), fontSize);
-            DrawText(name.c_str(), (int)posX-textWidth/2, (int)posY-fontSize/2, fontSize, BLACK);
+            int drawX = (int)round(posX- textWidth/2.0f);
+            int drawY = (int)round(posY-fontSize/2.0f);
+            DrawText(name.c_str(), drawX, drawY, fontSize, BLACK);
         }
     }
 
