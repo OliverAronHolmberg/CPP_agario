@@ -21,7 +21,7 @@ class Entity{
     Color color = {255, 255, 255, 255};
 
     void drawEntity(){
-        DrawCircle(posX, posY, radius, color);
+        DrawCircleV({posX, posY}, radius, color);
     }
 
     
@@ -41,17 +41,18 @@ class Enemy: public Entity{
     std::list<Food>* foods;
     Enemy(std::list<Food>& foodList){
         radius = 10.0f;
-        
         foods = &foodList;
 
     }
 
     void eatFood(){
         for (auto& food : *foods){
-            if (abs(posX - food.posX) < radius/2 && abs(posY - food.posY) < radius/2){
+            float dx = posX - food.posX;
+            float dy = posY - food.posY;
+            if (sqrt(dx*dx + dy*dy) < radius){
                 radius += 0.5f;
-                food.posX = GetRandomValue((-MAPW/2),(MAPW/2));
-                food.posY = GetRandomValue((-MAPH/2), (winH/2));
+                food.posX = GetRandomValue(-MAPW/2,MAPW/2);
+                food.posY = GetRandomValue(-MAPH/2, MAPH/2);
             }
         }
     }
@@ -66,8 +67,8 @@ class Player: public Entity{
         enemies = &enemyList;
         foods = &foodList;
         radius = 10.0f;
-        posX = winW/2 - radius;
-        posY = winH/2-radius;
+        posX = 0;
+        posY = 0;
 
         camera.target = (Vector2{posX, posY});
         camera.offset = (Vector2{winW/2.0f, winH/2.0f});
@@ -86,12 +87,14 @@ class Player: public Entity{
 
     void Movement(){
         Vector2 mousePos = GetMousePosition();
-        Vector2 dir = {mousePos.x - posX, mousePos.y - posY};
+        Vector2 center = {winW / 2.0f, winH / 2.0f};
+
+        Vector2 dir = {mousePos.x - center.x, mousePos.y - center.y};
         
 
         float len = sqrt(dir.x * dir.x + dir.y* dir.y);
 
-        if(len > radius){
+        if(len > 5.0f){
             posX += (dir.x/len) * speed * GetFrameTime(); 
             posY += (dir.y/len) * speed * GetFrameTime(); 
         }
@@ -101,10 +104,13 @@ class Player: public Entity{
 
     void eatFood(){
         for (auto& food : *foods){
-            if (abs(posX - food.posX) < radius && abs(posY - food.posY) < radius ){
+            float dx = posX - food.posX;
+            float dy = posY - food.posY;
+            if (sqrt(dx*dx+dy*dy) < radius ){
                 radius += 0.5f;
-                food.posX = GetRandomValue(-(MAPW/2),(MAPW/2));
-                food.posY = GetRandomValue(-(MAPH/2), (winH/2));
+                speed = 200.0f * pow(radius, -0.439);
+                food.posX = GetRandomValue(-MAPW/2,MAPW/2);
+                food.posY = GetRandomValue(-MAPH/2, winH/2);
             }
         }
     }
@@ -117,14 +123,14 @@ class Player: public Entity{
 
 int main(){
 
-
+    SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
     InitWindow(winW, winH, "Agario");
     SetTargetFPS(targetFPS);
     
     
     std::list<Food> foodList;
 
-    for (int i = 0; i<300; i++){
+    for (int i = 0; i<1000; i++){
         Food food;
         food.posX = GetRandomValue((-MAPW/2), (MAPW/2));
         food.posY = GetRandomValue((-MAPH/2), (MAPH/2));
@@ -136,7 +142,7 @@ int main(){
     std::list<Enemy> enemyList;
     
 
-    for (int i = 0; i < 20; i++){
+    for (int i = 0; i < 60; i++){
         Enemy enemy(foodList);
         enemy.posX = GetRandomValue((-MAPW/2), (MAPW/2));
         enemy.posY = GetRandomValue((-MAPH/2), (MAPH/2));
@@ -155,24 +161,30 @@ int main(){
 
     while (!WindowShouldClose()){
         
-        
-        player.eatFood();
         player.Movement();
+        player.eatFood();
         player.UpdateCamera();
 
-        BeginDrawing();
-        ClearBackground(BLACK);
-        BeginMode2D(player.camera);
-        for (auto& food : foodList){
-            food.drawEntity();
-        }
         for (auto& enemy : enemyList){
-            enemy.drawEntity();
             enemy.eatFood();
         }
-        player.drawEntity();
 
-        EndMode2D();
+        BeginDrawing();
+            ClearBackground(BLACK);
+            BeginMode2D(player.camera);
+
+                for(int i = -MAPW/2; i<=MAPW/2; i+=200) DrawLine(i, -MAPH/2, i, MAPH/2, DARKGRAY);
+                for(int i = -MAPH/2; i<=MAPH/2; i+=200) DrawLine(-MAPW/2, i, MAPH/2, i, DARKGRAY);
+
+                for (auto& food : foodList){
+                    food.drawEntity();
+                }
+                for (auto& enemy : enemyList){
+                    enemy.drawEntity();
+                }
+                player.drawEntity();
+
+            EndMode2D();
         
 
         EndDrawing();
