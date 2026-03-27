@@ -65,7 +65,6 @@ class Enemy: public Entity{
     Enemy(std::list<Food>& foodList){
         radius = 10.0f;
         foods = &foodList;
-
     }
 
     void eatFood(){
@@ -77,6 +76,38 @@ class Enemy: public Entity{
                 food.posX = GetRandomValue(-MAPW/2,MAPW/2);
                 food.posY = GetRandomValue(-MAPH/2, MAPH/2);
             }
+        }
+    }
+
+    void eatEnemy(std::list<Enemy>& enemyList, Entity& player){
+        for (auto& enemy : enemyList){
+            if(&enemy == this) continue;
+            float dx = posX - enemy.posX;
+            float dy = posY - enemy.posY;
+            float distance = sqrt(dx*dx+dy*dy);
+
+            if (distance < radius || distance < enemy.radius){
+                if(radius > enemy.radius*1.2f){
+                    radius += enemy.radius * 0.2f;
+                    speed = 200.0f * pow(radius, -0.439);
+                    enemy.posX = GetRandomValue(-MAPW/2,MAPW/2);
+                    enemy.posY = GetRandomValue(-MAPH/2, MAPH/2);
+                    enemy.radius = GetRandomValue(10.0f, 30.0f);
+                }
+                
+                
+            }
+
+            
+        }
+        float pdx = posX - player.posX;
+        float pdy = posY - player.posY;
+        float pDist = sqrt(pdx*pdx+pdy*pdy);
+
+        if(pDist < radius && radius > player.radius * 1.2f){
+            radius += player.radius * 0.2f;
+            speed = 200.0f * pow(radius, -0.439);
+            running = false;
         }
     }
 };
@@ -212,7 +243,7 @@ int main(){
     }
 
     Player player(enemyList, foodList);
-    player.radius = 200.0f;
+    player.radius = 10.0f;
 
 
     
@@ -228,6 +259,7 @@ int main(){
 
         for (auto& enemy : enemyList){
             enemy.eatFood();
+            enemy.eatEnemy(enemyList, player);
         }
 
         BeginDrawing();
