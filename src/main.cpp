@@ -91,6 +91,7 @@ class PlayerCell : public Entity{
         float velX = 0.0f;
         float velY = 0.0f;
         float mergeTimer = 0.0f;
+        float speedNumber = 450.0f;
 
         PlayerCell(float r, float x, float y, Color c, std::string n){
             radius = r; 
@@ -102,7 +103,7 @@ class PlayerCell : public Entity{
         }
         void Update(){
             radius += (targetRadius - radius) * 0.1f;
-            speed = 200.0f * pow(radius, -0.439);
+            speed = speedNumber * pow(radius, -0.439);
 
             posX += velX * GetFrameTime();
             posY += velY * GetFrameTime();
@@ -230,21 +231,19 @@ class Player{
 
         
         if (IsKeyDown(KEY_W)) {
-            Vector2 mousePos = GetMousePosition();
-            Vector2 screenCenter = { (float)winW / 2.0f, (float)winH / 2.0f };
-            
-            float dx = mousePos.x - screenCenter.x;
-            float dy = mousePos.y - screenCenter.y;
-            float baseAngle = atan2f(dy, dx); 
+            Vector2 mouseWorldPos = GetScreenToWorld2D(GetMousePosition(), camera);
 
             for (auto& cell : cells) {
                 if (cell.targetRadius >= 20.0f) {
+                    float dx = mouseWorldPos.x - cell.posX;
+                    float dy = mouseWorldPos.y - cell.posY;
+                    float baseAngle = atan2f(dy, dx); 
+
                     float ejectR = 5.0f; 
                     float currentArea = cell.targetRadius * cell.targetRadius;
                     float foodArea = ejectR * ejectR;
                     cell.targetRadius = sqrtf(currentArea - foodArea);
 
-                   
                     float randomOffset = (GetRandomValue(-100, 100) / 1000.0f); 
                     float finalAngle = baseAngle + randomOffset;
 
@@ -403,7 +402,7 @@ int main(){
         
         Color randomCol = {(unsigned char)GetRandomValue(0, 255), (unsigned char)GetRandomValue(0, 255), (unsigned char)GetRandomValue(0, 255), 255};
         
-        playerList.emplace_back(playerList, foodList, GetRandomValue((-MAPW/2), (MAPW/2)), GetRandomValue((-MAPH/2), (MAPH/2)), randomCol, *it, true);
+        playerList.emplace_front(playerList, foodList, GetRandomValue((-MAPW/2), (MAPW/2)), GetRandomValue((-MAPH/2), (MAPH/2)), randomCol, *it, true);
     }
 
     
