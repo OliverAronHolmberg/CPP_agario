@@ -106,7 +106,7 @@ class Enemy: public Entity{
             float dy = posY - food.posY;
             if (dx*dx + dy*dy < radius*radius){
                 radius += 0.5f;
-                food.posX = GetRandomValue(-MAPW/2,MAPW/2);
+                food.posX = GetRandomValue(-MAPW/2, MAPW/2);
                 food.posY = GetRandomValue(-MAPH/2, MAPH/2);
             }
         }
@@ -121,7 +121,7 @@ class Enemy: public Entity{
 
 class PlayerCell : public Entity{
         public: 
-        float targetRadius = 100.0f;
+        float targetRadius = 500.0f;
         float velX = 0.0f;
         float velY = 0.0f;
         float mergeTimer = 0.0f;
@@ -328,7 +328,7 @@ class Player{
                     cell.targetRadius = sqrt(cell.targetRadius*cell.targetRadius + food.radius*food.radius);
                     food.radius = 5.0f;
                     food.posX = GetRandomValue(-MAPW/2,MAPW/2);
-                    food.posY = GetRandomValue(-MAPH/2, winH/2);
+                    food.posY = GetRandomValue(-MAPH/2, MAPH/2);
                 }
             }
         }
@@ -352,7 +352,7 @@ class Player{
                     if(cell.targetRadius > enemy.radius*1.2f){
                         cell.targetRadius += enemy.radius * 0.2f;
                         enemy.posX = GetRandomValue(-MAPW/2,MAPW/2);
-                        enemy.posY = GetRandomValue(-MAPH/2, winH/2);
+                        enemy.posY = GetRandomValue(-MAPH/2, MAPH/2);
                         enemy.radius = GetRandomValue(10.0f, 30.0f);
                     }
                     else if(enemy.radius > cell.radius*1.2f){
@@ -494,7 +494,7 @@ int main(){
                 
                 
                 for(int i = -MAPW/2; i<=MAPW/2; i+=200) DrawLine(i, -MAPH/2, i, MAPH/2, DARKGRAY);
-                for(int i = -MAPH/2; i<=MAPH/2; i+=200) DrawLine(-MAPW/2, i, MAPH/2, i, DARKGRAY);
+                for(int i = -MAPH/2; i<=MAPH/2; i+=200) DrawLine(-MAPW/2, i, MAPW/2, i, DARKGRAY);
                     
 
                 for (auto& food : foodList){
