@@ -5,8 +5,7 @@ This project is a C++ implementation of the game Agar.io. It follows the standar
 ---
 
 
-<img width="1072" height="713" alt="Screenshot 2026-03-27 201030" src="https://github.com/user-attachments/assets/23f9e1d4-99e6-42f9-91e0-8e1a5de68a93" />
-
+<img width="1072" height="713" alt="Screenshot 2026-03-28 182857" src="https://github.com/user-attachments/assets/2e52c4ed-6478-40d0-a1ea-139c5c23da0c" />
 
 ## Features
 - Groth Mechanics: Consuming pellets and smaller players increase mass.
@@ -29,7 +28,8 @@ To build and run this project, you will need:
  <img width="1072" height="713" alt="arrow" src="https://github.com/user-attachments/assets/2aab893d-c373-4e64-a6fc-72a720d1cae4" />
 
 - Space: Split your cell into halves to jump forward or eat smaller players
-<img width="1072" height="713" alt="Screenshot 2026-03-28 152708" src="https://github.com/user-attachments/assets/97f53938-2174-4360-b683-41ee5b91e272" />
+<img width="1072" height="713" alt="Screenshot 2026-03-28 182857" src="https://github.com/user-attachments/assets/cd38aa63-c498-499f-b89b-d0b339b17c43" />
+
 
  
 - W: Eject small parts of your mass to bait enemies or shrink
