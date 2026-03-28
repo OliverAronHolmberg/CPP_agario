@@ -83,56 +83,22 @@ class Food: public Entity{
     }
 };
 
-class Enemy: public Entity{
-    public:
-    std::list<Food>* foods;
-    float velX = 0.0f;
-    float velY = 0.0f;
-    float wanderTimer = 0.0f;
-    float wanderDirX = 1.0f;
-    float wanderDirY = 0.0f;
-    Enemy(std::list<Food>& foodList){
-        radius = 10.0f;
-        foods = &foodList;
-    }
 
-    int GetRandomDirection(){
-        return GetRandomValue(-1, 1);
-    }
-
-    void eatFood(){
-        for (auto& food : *foods){
-            float dx = posX - food.posX;
-            float dy = posY - food.posY;
-            if (dx*dx + dy*dy < radius*radius){
-                radius += 0.5f;
-                food.posX = GetRandomValue(-MAPW/2, MAPW/2);
-                food.posY = GetRandomValue(-MAPH/2, MAPH/2);
-            }
-        }
-    }
-    void eatEnemy(std::list<Enemy>& enemyList, Player& player);
-
-    void Movement(){
-        
-    }
-    
-};
 
 class PlayerCell : public Entity{
         public: 
-        float targetRadius = 500.0f;
+        float targetRadius;
         float velX = 0.0f;
         float velY = 0.0f;
         float mergeTimer = 0.0f;
 
-        PlayerCell(float r, float x, float y, Color c){
-            radius = r;
+        PlayerCell(float r, float x, float y, Color c, std::string n){
+            radius = r; 
+            targetRadius = r;
             posX = x;
             posY = y;
             color = c;
-            speed = 200.0f * pow(radius, -0.439);
-            name = "Player";
+            name = n;
         }
         void Update(){
             radius += (targetRadius - radius) * 0.1f;
@@ -150,20 +116,30 @@ class PlayerCell : public Entity{
 class Player{
     public: 
     std::list<PlayerCell> cells;
-    std::list<Enemy>* enemies;
+    std::list<Player>* players;
     std::list<Food>* foods;
     Camera2D camera = {0};
+    std::string name;
     Color color;
-    Player(std::list<Enemy>& enemyList, std::list<Food>& foodList){
-        enemies = &enemyList;
+    bool isAI = false;
+    Player(std::list<Player>& playerList, std::list<Food>& foodList, float x, float y, Color c, std::string n, bool ai){
+        isAI = ai;
+        color = c;
+        name = n;
+        players = &playerList;
         foods = &foodList;
-        color = WHITE;
 
-        camera.offset = (Vector2{winW/2.0f, winH/2.0f});
-        camera.rotation = 0.0f;
-        camera.zoom = 1.0f;
+        float startRadius = ai ? (float)GetRandomValue(10, 200) : 300.0f;
+        cells.emplace_back(startRadius, x, y, c, n);
+
+        if (!isAI){
+            camera.offset = (Vector2{winW/2.0f, winH/2.0f});
+            camera.rotation = 0.0f;
+            camera.zoom = 1.0f;
+        }
         
-        cells.emplace_back(200.0f, 0.0f, 0.0f, color);
+        
+        
 
         
     }
@@ -188,6 +164,7 @@ class Player{
 
 
     void UpdateCamera(){
+        if (isAI) return;
         Vector2 center = getCenter();
         float maxDist = getLargestRadius();
         for (auto& cell : cells){
@@ -204,121 +181,125 @@ class Player{
 
     
 
-    void Movement(){
-
+    void Movement() {
+    if (!isAI) {
         Vector2 mousePos = GetMousePosition();
-        Vector2 center = {winW / 2.0f, winH / 2.0f};
+        Vector2 center = { (float)winW / 2.0f, (float)winH / 2.0f };
 
         float dx = mousePos.x - center.x;
         float dy = mousePos.y - center.y;
-        float len = sqrtf(dx*dx+dy*dy);
-        for (auto& cell : cells){
-            if (len > 5.0f){
-                cell.posX += (dx/len) * cell.speed * GetFrameTime();
-                cell.posY += (dy/len) * cell.speed * GetFrameTime();
+        float len = sqrtf(dx * dx + dy * dy);
+
+        for (auto& cell : cells) {
+            if (len > 5.0f) {
+                cell.posX += (dx / len) * cell.speed * GetFrameTime();
+                cell.posY += (dy / len) * cell.speed * GetFrameTime();
             }
-            cell.Update();
         }
 
-        if(IsKeyPressed(KEY_SPACE)){
+       
+        if (IsKeyPressed(KEY_SPACE)) {
             std::list<PlayerCell> toAdd;
-            for (auto& cell : cells){
-                if(cell.targetRadius >= 20.0f){
+            float baseAngle = atan2f(dy, dx); 
+
+            for (auto& cell : cells) {
+                if (cell.targetRadius >= 35.0f) { 
                     float newR = cell.targetRadius / sqrtf(2.0f);
                     cell.targetRadius = newR;
                     cell.radius = newR;
 
-                    float ndx = len > 0 ? dx/len : 1.0f;
-                    float ndy = len > 0 ? dy/len : 0.0f;
+                    float splitOffset = (GetRandomValue(-50, 50) / 1000.0f); 
+                    float finalAngle = baseAngle + splitOffset;
 
-                    PlayerCell newCell(newR,
-                    cell.posX + ndx * (newR + 2.0f +2.0f),
-                    cell.posY + ndy * (newR + 2.0f +2.0f),
-                    color);
-                    newCell.targetRadius = newR;
-                    newCell.radius = newR;
-                    newCell.velX = ndx*400.0f;
-                    newCell.velY = ndy*400.0f;
-                    newCell.mergeTimer = 10.0f;
-                    cell.mergeTimer = 10.0f;
+                    float ndx = cosf(finalAngle);
+                    float ndy = sinf(finalAngle);
+
+                    PlayerCell newCell(newR, cell.posX + ndx * (newR + 10.0f), cell.posY + ndy * (newR + 10.0f), color, name);
+
+                    newCell.velX = ndx * 800.0f;
+                    newCell.velY = ndy * 800.0f;
+                    
+                    newCell.mergeTimer = 15.0f; 
+                    cell.mergeTimer = 15.0f;
+                    
                     toAdd.push_back(newCell);
-
                 }
             }
-            for (auto& cell : toAdd) cells.push_back(cell);
-        }
-        
-
-        if(IsKeyDown(KEY_W)){
-            for (auto& cell : cells){
-                if (cell.targetRadius >= 20.0f){
-                    cell.targetRadius -= 0.5f;
-
-                    float ndx = len > 0 ? dx/len : 1.0f;
-                    float ndy = len > 0 ? dy/len : 0.0f;
-
-                    float angleOffset = GetRandomValue(-15, 15) * (PI / 180.0f);
-                    float cosA = cosf(angleOffset);
-                    float sinA = sinf(angleOffset);
-                    float rdx = ndx*cosA - ndy*sinA;
-                    float rdy = ndx*sinA + ndy*cosA;
-
-                    float ejectSpeed = GetRandomValue(300.0f, 500.0f);
-
-                    Food food;
-                    food.posX = cell.posX + rdx * (cell.radius + food.radius + 2.0f);
-                    food.posY = cell.posY + rdy * (cell.radius + food.radius + 2.0f);
-                    food.velX = rdx * ejectSpeed;
-                    food.velY = rdy * ejectSpeed;
-                    food.color = color;
-
-                    foods->push_back(food);
-
-                }
-            }
-            
-
-        }
-        
-        for (auto it1 = cells.begin(); it1 != cells.end(); ++it1){
-            for (auto it2 = std::next(it1); it2 != cells.end(); ){
-                if (it1->mergeTimer <= 0.0f && it2->mergeTimer <= 0.0f){
-                    float ddx = it1->posX - it2->posX;
-                    float ddy = it1->posY - it2->posY;
-                    float dist = sqrtf(ddx*ddx + ddy*ddy);
-
-                    auto& bigger = it1->radius >= it2->radius ? *it1 : *it2;
-                    
-
-                    
-                    if(dist < bigger.radius){
-                        float r1 = it1->targetRadius;
-                        float r2 = it2->targetRadius;
-                        it1->targetRadius = sqrtf(r1*r1 + r2*r2);
-                        it1->radius = it1->targetRadius;
-                        it2 = cells.erase(it2);
-                        UpdateCamera();
-                        continue;
-                    }
-                    
-
-                }
-                ++it2;
-                
-            }
-
-            
-            
+            for (auto& nc : toAdd) cells.push_back(nc);
         }
 
         
-        
+        if (IsKeyDown(KEY_W)) {
+            Vector2 mousePos = GetMousePosition();
+            Vector2 screenCenter = { (float)winW / 2.0f, (float)winH / 2.0f };
+            
+            float dx = mousePos.x - screenCenter.x;
+            float dy = mousePos.y - screenCenter.y;
+            float baseAngle = atan2f(dy, dx); 
 
-        
-        
+            for (auto& cell : cells) {
+                if (cell.targetRadius >= 20.0f) {
+                    float ejectR = 5.0f; 
+                    float currentArea = cell.targetRadius * cell.targetRadius;
+                    float foodArea = ejectR * ejectR;
+                    cell.targetRadius = sqrtf(currentArea - foodArea);
+
+                   
+                    float randomOffset = (GetRandomValue(-100, 100) / 1000.0f); 
+                    float finalAngle = baseAngle + randomOffset;
+
+                    float ndx = cosf(finalAngle);
+                    float ndy = sinf(finalAngle);
+
+                    Food f;
+                    f.radius = ejectR;
+                    f.posX = cell.posX + ndx * (cell.radius + 5.0f);
+                    f.posY = cell.posY + ndy * (cell.radius + 5.0f);
+
+                    f.velX = ndx * 600.0f; 
+                    f.velY = ndy * 600.0f;
+                    
+                    f.color = color;
+                    foods->push_back(f);
+                }
+            }
+        }
+    } else {
         
     }
 
+  
+    for (auto& cell : cells) {
+        cell.Update();
+        
+        if (cell.posX < -MAPW / 2) cell.posX = -MAPW / 2;
+        if (cell.posX > MAPW / 2)  cell.posX = MAPW / 2;
+        if (cell.posY < -MAPH / 2) cell.posY = -MAPH / 2;
+        if (cell.posY > MAPH / 2)  cell.posY = MAPH / 2;
+    }
+
+   
+    for (auto it1 = cells.begin(); it1 != cells.end(); ++it1) {
+        auto it2 = std::next(it1);
+        while (it2 != cells.end()) {
+            if (it1->mergeTimer <= 0.0f && it2->mergeTimer <= 0.0f) {
+                float ddx = it1->posX - it2->posX;
+                float ddy = it1->posY - it2->posY;
+                float dist = sqrtf(ddx * ddx + ddy * ddy);
+
+                if (dist < it1->radius * 0.8f) {
+                    float area1 = it1->targetRadius * it1->targetRadius;
+                    float area2 = it2->targetRadius * it2->targetRadius;
+                    it1->targetRadius = sqrtf(area1 + area2);
+                    it2 = cells.erase(it2); 
+                    continue; 
+                }
+            }
+            ++it2;
+        }
+    }
+}
+        
     void eatFood(){
         for (auto& cell : cells){
             for (auto& food : *foods){
@@ -340,32 +321,43 @@ class Player{
 
     
 
-    void eatEnemy(){
+    void eatEnemy() {
+    for (auto& myCell : cells) {
+        for (auto& otherPlayer : *players) {
+            if (&otherPlayer == this) continue;
 
-        for (auto& cell : cells){
-            for (auto& enemy : *enemies){
-                float ddx = cell.posX - enemy.posX;
-                float ddy = cell.posY - enemy.posY;
-                float distance = sqrt(ddx*ddx+ddy*ddy);
-
-                if (distance < cell.radius || distance < enemy.radius * 1.2f){
-                    if(cell.targetRadius > enemy.radius*1.2f){
-                        cell.targetRadius += enemy.radius * 0.2f;
-                        enemy.posX = GetRandomValue(-MAPW/2,MAPW/2);
-                        enemy.posY = GetRandomValue(-MAPH/2, MAPH/2);
-                        enemy.radius = GetRandomValue(10.0f, 30.0f);
+            for (auto it = otherPlayer.cells.begin(); it != otherPlayer.cells.end(); ) {
+                float ddx = myCell.posX - it->posX;
+                float ddy = myCell.posY - it->posY;
+                float distanceSq = ddx * ddx + ddy * ddy; 
+                
+                
+                if (distanceSq < (myCell.radius * myCell.radius)) { 
+                    if (myCell.targetRadius > it->radius * 1.15f) {
+                        
+                        myCell.targetRadius = sqrtf(myCell.targetRadius * myCell.targetRadius + it->radius * it->radius);
+                        
+                        if (otherPlayer.isAI) {
+                            
+                            it->posX = GetRandomValue(-MAPW/2, MAPW/2);
+                            it->posY = GetRandomValue(-MAPH/2, MAPH/2);
+                            it->targetRadius = GetRandomValue(20, 50);
+                            it->radius = it->targetRadius;
+                            ++it;
+                        } else {
+                            
+                            it = otherPlayer.cells.erase(it);
+                        }
+                    } else {
+                        ++it;
                     }
-                    else if(enemy.radius > cell.radius*1.2f){
-                        // running = false;
-                    }
-                    
+                } else {
+                    ++it;
                 }
             }
         }
-
-        
-        
     }
+}
 
     void draw(){
             for (auto& cell : cells) cell.drawEntity(true);
@@ -374,48 +366,7 @@ class Player{
 
 };
 
-void Enemy::eatEnemy(std::list<Enemy>& enemyList, Player& player){
-        for (auto& enemy : enemyList){
-            if(&enemy == this) continue;
-            float dx = posX - enemy.posX;
-            float dy = posY - enemy.posY;
-            float distance = sqrt(dx*dx+dy*dy);
 
-            if (distance < radius || distance < enemy.radius){
-                if(radius > enemy.radius*1.2f){
-                    radius += enemy.radius * 0.2f;
-                    speed = 200.0f * pow(radius, -0.439);
-                    enemy.posX = GetRandomValue(-MAPW/2,MAPW/2);
-                    enemy.posY = GetRandomValue(-MAPH/2, MAPH/2);
-                    enemy.radius = GetRandomValue(10.0f, 30.0f);
-                }
-                
-                
-            }
-
-            
-        }
-        for (auto it = player.cells.begin(); it != player.cells.end(); ){
-            float pdx = posX - it->posX;
-            float pdy = posY - it->posY;
-            float pDist = sqrtf(pdx*pdx + pdy*pdy);
-
-            if (pDist < radius && radius > it->radius * 1.2f){
-                radius = sqrtf(radius*radius + it->radius * it->radius * 0.2f);
-                speed = 200.0f * pow(radius, -0.439f);
-
-                if (player.cells.size() > 1){
-                    it = player.cells.erase(it);
-                } else {
-                    running = false;
-                    ++it;
-                }
-                continue;
-            }
-            ++it;
-        }
-        
-    }
 
 
 
@@ -442,29 +393,20 @@ int main(){
     }
 
 
-    std::list<Enemy> enemyList;
-    
+    std::list<Player> playerList;
+    playerList.emplace_back(playerList, foodList, 0.0f, 0.0f, WHITE, "Player", false);
 
     for (int i = 0; i <= enemyAmount; i++){
-        Enemy enemy(foodList);
-        enemy.posX = GetRandomValue((-MAPW/2), (MAPW/2));
-        enemy.posY = GetRandomValue((-MAPH/2), (MAPH/2));
-        enemy.color = {(unsigned char)GetRandomValue(0, 255), (unsigned char)GetRandomValue(0, 255), (unsigned char)GetRandomValue(0, 255), 255};
-        enemy.radius = GetRandomValue(10, 200);
-        enemy.speed = 200.0f * pow(enemy.radius, -0.439);
-        
-
         int randomIDX = GetRandomValue(0, names.size() -1);
         auto it = names.begin();
         std::advance(it, randomIDX);
-        enemy.name = *it;
-
-        enemyList.push_back(enemy);
         
-
+        Color randomCol = {(unsigned char)GetRandomValue(0, 255), (unsigned char)GetRandomValue(0, 255), (unsigned char)GetRandomValue(0, 255), 255};
+        
+        playerList.emplace_back(playerList, foodList, GetRandomValue((-MAPW/2), (MAPW/2)), GetRandomValue((-MAPH/2), (MAPH/2)), randomCol, *it, true);
     }
 
-    Player player(enemyList, foodList);
+    
 
 
 
@@ -474,22 +416,23 @@ int main(){
 
     while (!WindowShouldClose()){
         
-        player.Movement();
-        player.eatFood();
-        player.eatEnemy();
-        player.UpdateCamera();
+        Player* realPlayer = nullptr;
 
-        for (auto& enemy : enemyList){
-            enemy.Movement();
-            enemy.eatFood();
-            enemy.eatEnemy(enemyList, player);
+        
+
+        for (auto& player : playerList){
+            if(!player.isAI) realPlayer = &player;
+            player.Movement();
+            player.eatFood();
+            player.eatEnemy();
+            player.UpdateCamera();
         }
 
         BeginDrawing();
         ClearBackground(BG);
-            if (running){
+            if (running && realPlayer != nullptr){
                 
-                BeginMode2D(player.camera);
+                BeginMode2D(realPlayer->camera);
 
                 
                 
@@ -501,13 +444,12 @@ int main(){
                     food.Update();
                     food.drawEntity(false);
                 }
-                for (auto& enemy : enemyList){
-                    enemy.drawEntity(true);
+                for (auto& player : playerList){
+                    player.draw();
                 }
                 
 
                 
-                player.draw();
 
                 
 
