@@ -266,28 +266,36 @@ class Player{
         }
         
         for (auto it1 = cells.begin(); it1 != cells.end(); ++it1){
-            for (auto it2 = std::next(it1); it2 != cells.end(); ++it2){
+            for (auto it2 = std::next(it1); it2 != cells.end(); ){
                 if (it1->mergeTimer <= 0.0f && it2->mergeTimer <= 0.0f){
                     float ddx = it1->posX - it2->posX;
                     float ddy = it1->posY - it2->posY;
                     float dist = sqrtf(ddx*ddx + ddy*ddy);
-                    float minDist = (it1->radius + it2->radius) * 0.05;
 
-                    if(dist < it1->radius){
-                        float overlap = (minDist - dist) / dist;
-                        float pushX = ddx * overlap * 0.5f;
-                        float pushY = ddy * overlap * 0.5f;
-                        it1->posX -= pushX;
-                        it1->posY -= pushY;
-                        it2->posX -= pushX;
-                        it2->posY -= pushY;
-                        
+                    auto& bigger = it1->radius >= it2->radius ? *it1 : *it2;
+                    
+
+                    
+                    if(dist < bigger.radius){
+                        float r1 = it1->targetRadius;
+                        float r2 = it2->targetRadius;
+                        it1->targetRadius = sqrtf(r1*r1 + r2*r2);
+                        it1->radius = it1->targetRadius;
+                        it2 = cells.erase(it2);
+                        UpdateCamera();
+                        continue;
                     }
+                    
 
                 }
+                ++it2;
                 
             }
+
+            
+            
         }
+
         
         
 
@@ -302,7 +310,7 @@ class Player{
                 float ddx = cell.posX - food.posX;
                 float ddy = cell.posY - food.posY;
                 if (sqrt(ddx*ddx+ddy*ddy) < cell.radius ){
-                    cell.targetRadius += food.radius;
+                    cell.targetRadius = sqrt(cell.targetRadius*cell.targetRadius + food.radius*food.radius);
                     food.radius = 5.0f;
                     food.posX = GetRandomValue(-MAPW/2,MAPW/2);
                     food.posY = GetRandomValue(-MAPH/2, winH/2);
@@ -372,16 +380,24 @@ void Enemy::eatEnemy(std::list<Enemy>& enemyList, Player& player){
 
             
         }
-        for (auto& cell : player.cells){
-            float pdx = posX - cell.posX;
-            float pdy = posY - cell.posY;
-            float pDist = sqrt(pdx*pdx+pdy*pdy);
+        for (auto it = player.cells.begin(); it != player.cells.end(); ){
+            float pdx = posX - it->posX;
+            float pdy = posY - it->posY;
+            float pDist = sqrtf(pdx*pdx + pdy*pdy);
 
-            if(pDist < radius && radius > cell.radius * 1.2f){
-                radius += cell.radius * 0.2f;
-                speed = 200.0f * pow(radius, -0.439);
-                // running = false;
+            if (pDist < radius && radius > it->radius * 1.2f){
+                radius = sqrtf(radius*radius + it->radius * it->radius * 0.2f);
+                speed = 200.0f * pow(radius, -0.439f);
+
+                if (player.cells.size() > 1){
+                    it = player.cells.erase(it);
+                } else {
+                    running = false;
+                    ++it;
+                }
+                continue;
             }
+            ++it;
         }
         
     }
