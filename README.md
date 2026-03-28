@@ -26,14 +26,14 @@ To build and run this project, you will need:
 
 ## Controls
 - Mouse: Move the cursor to change your cell's direction
- <img width="1054" height="679" alt="arrow" src="https://github.com/user-attachments/assets/2aab893d-c373-4e64-a6fc-72a720d1cae4" />
+ <img width="1072" height="713" alt="arrow" src="https://github.com/user-attachments/assets/2aab893d-c373-4e64-a6fc-72a720d1cae4" />
 
 - Space: Split your cell into halves to jump forward or eat smaller players
-<img width="914" height="641" alt="Screenshot 2026-03-28 152708" src="https://github.com/user-attachments/assets/97f53938-2174-4360-b683-41ee5b91e272" />
+<img width="1072" height="713" alt="Screenshot 2026-03-28 152708" src="https://github.com/user-attachments/assets/97f53938-2174-4360-b683-41ee5b91e272" />
 
  
 - W: Eject small parts of your mass to bait enemies or shrink
-<img width="823" height="616" alt="Screenshot 2026-03-28 182408" src="https://github.com/user-attachments/assets/529456a2-0e23-4a29-8389-523277e30462" />
+<img width="1072" height="713" alt="Screenshot 2026-03-28 182408" src="https://github.com/user-attachments/assets/529456a2-0e23-4a29-8389-523277e30462" />
 
 
 ---
