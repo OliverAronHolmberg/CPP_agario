@@ -40,12 +40,21 @@ class Entity{
         DrawCircleV({posX, posY}, radius, color);
         if(showName){
 
-            int fontSize  = (int)(radius/2.0f);
+            float fontSize  = radius*0.35f;
+            if (fontSize < 6.0f) fontSize = 6.0f;
+
+            Font font = GetFontDefault();
+            Vector2 textSize = MeasureTextEx(font, name.c_str(), fontSize, 0);
             
-            int textWidth = MeasureText(name.c_str(), fontSize);
-            int drawX = (int)round(posX- textWidth/2.0f);
-            int drawY = (int)round(posY-fontSize/2.0f);
-            DrawText(name.c_str(), drawX, drawY, fontSize, BLACK);
+            float maxTextWidth = radius * 1.8f;
+            if(textSize.x > maxTextWidth){
+                float scale = maxTextWidth / textSize.x;
+                fontSize += scale;
+                textSize = MeasureTextEx(font, name.c_str(), fontSize, 0);
+            }
+
+            Vector2 drawPos = {posX - textSize.x*0.5f, posY - textSize.y*0.5f};
+            DrawTextEx(font, name.c_str(), drawPos, fontSize, 0, BLACK);
         }
     }
 
@@ -109,7 +118,7 @@ class Enemy: public Entity{
         if(pDist < radius && radius > player.radius * 1.2f){
             radius += player.radius * 0.2f;
             speed = 200.0f * pow(radius, -0.439);
-            running = false;
+            // running = false;
         }
     }
 };
