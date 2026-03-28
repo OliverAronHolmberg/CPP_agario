@@ -183,7 +183,8 @@ class Player{
             if (dist > maxDist) maxDist = dist;
         }
         float targetZoom = (winH / 2.0f) / (maxDist * 1.2f);
-        camera.zoom += (targetZoom - camera.zoom) * 0.05f;
+        targetZoom = fmaxf(0.3f, fminf(targetZoom, 3.0f));
+        camera.zoom += (targetZoom - camera.zoom) * 0.01f;
         camera.target = center;
     }
 
@@ -410,6 +411,8 @@ int main(){
     SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
     InitWindow(winW, winH, "Agario");
     SetTargetFPS(targetFPS);
+    Image icon = LoadImage("resources/Cell_in-game_2.png");
+    SetWindowIcon(icon);
 
     
     
