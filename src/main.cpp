@@ -11,8 +11,9 @@ const int MAPW = 4000;
 const int MAPH = 3000;
 int foodAmount = 1500;
 int enemyAmount = 60;
-bool DebugMode = true;
+bool DebugMode = false;
 bool running = true;
+const Color BG = {27, 27, 27, 255};
 
 std::list<std::string> names = {
     "Spectral", "Vortex", "Apex", "Lunar", "Rift", "Zephyr", "Kinetix", "Nova",
@@ -37,6 +38,7 @@ class Entity{
     
 
     void drawEntity(bool showName){
+        DrawCircleV({posX, posY}, radius+2.0f, BLACK);
         DrawCircleV({posX, posY}, radius, color);
         if(showName){
 
@@ -84,16 +86,25 @@ class Food: public Entity{
 class Enemy: public Entity{
     public:
     std::list<Food>* foods;
+    float velX = 0.0f;
+    float velY = 0.0f;
+    float wanderTimer = 0.0f;
+    float wanderDirX = 1.0f;
+    float wanderDirY = 0.0f;
     Enemy(std::list<Food>& foodList){
         radius = 10.0f;
         foods = &foodList;
+    }
+
+    int GetRandomDirection(){
+        return GetRandomValue(-1, 1);
     }
 
     void eatFood(){
         for (auto& food : *foods){
             float dx = posX - food.posX;
             float dy = posY - food.posY;
-            if (sqrt(dx*dx + dy*dy) < radius){
+            if (dx*dx + dy*dy < radius*radius){
                 radius += 0.5f;
                 food.posX = GetRandomValue(-MAPW/2,MAPW/2);
                 food.posY = GetRandomValue(-MAPH/2, MAPH/2);
@@ -102,12 +113,15 @@ class Enemy: public Entity{
     }
     void eatEnemy(std::list<Enemy>& enemyList, Player& player);
 
+    void Movement(){
+        
+    }
     
 };
 
 class PlayerCell : public Entity{
         public: 
-        float targetRadius = 10.0f;
+        float targetRadius = 100.0f;
         float velX = 0.0f;
         float velY = 0.0f;
         float mergeTimer = 0.0f;
@@ -466,12 +480,13 @@ int main(){
         player.UpdateCamera();
 
         for (auto& enemy : enemyList){
+            enemy.Movement();
             enemy.eatFood();
             enemy.eatEnemy(enemyList, player);
         }
 
         BeginDrawing();
-        ClearBackground(BLACK);
+        ClearBackground(BG);
             if (running){
                 
                 BeginMode2D(player.camera);
