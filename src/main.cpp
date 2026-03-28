@@ -123,6 +123,7 @@ class Player{
     std::string name;
     Color color;
     bool isAI = false;
+    float playerRadius = 10.0f;
     Player(std::list<Player>& playerList, std::list<Food>& foodList, float x, float y, Color c, std::string n, bool ai){
         isAI = ai;
         color = c;
@@ -130,7 +131,7 @@ class Player{
         players = &playerList;
         foods = &foodList;
 
-        float startRadius = ai ? (float)GetRandomValue(10, 200) : 300.0f;
+        float startRadius = ai ? (float)GetRandomValue(10, 200) : playerRadius;
         cells.emplace_back(startRadius, x, y, c, n);
 
         if (!isAI){
