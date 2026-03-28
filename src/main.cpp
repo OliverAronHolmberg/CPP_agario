@@ -11,7 +11,7 @@ const int MAPW = 4000;
 const int MAPH = 3000;
 int foodAmount = 1500;
 int enemyAmount = 60;
-bool DebugMode = false;
+bool DebugMode = true;
 bool running = true;
 
 std::list<std::string> names = {
@@ -65,8 +65,19 @@ class Entity{
 
 class Food: public Entity{
     public:
+    float velX = 0.0f;
+    float velY = 0.0f;
+
     Food(){
         radius = 5.0f;
+    }
+
+    void Update(){
+        posX += velX*GetFrameTime();
+        posY += velY * GetFrameTime();
+
+        velX *= 0.90f;
+        velY *= 0.90f;
     }
 };
 
@@ -128,6 +139,7 @@ class Player: public Entity{
     std::list<Enemy>* enemies;
     std::list<Food>* foods;
     Camera2D camera = {0};
+    float targetRadius = 10.0f;
     Player(std::list<Enemy>& enemyList, std::list<Food>& foodList){
         enemies = &enemyList;
         foods = &foodList;
@@ -147,17 +159,69 @@ class Player: public Entity{
     }
 
     void UpdateCamera(){
+        radius += (targetRadius - radius) * 0.1f;
+        speed = 200.0f * pow(radius, -0.439);
         float targetZoom = 100.0f/ radius;
         camera.zoom += (targetZoom - camera.zoom) * 0.1f;
         
         camera.target = (Vector2){posX, posY};
     }
 
+    void eatFood(){
+        for (auto& food : *foods){
+            float dx = posX - food.posX;
+            float dy = posY - food.posY;
+            if (sqrt(dx*dx+dy*dy) < radius ){
+                targetRadius += 0.5f;
+                food.posX = GetRandomValue(-MAPW/2,MAPW/2);
+                food.posY = GetRandomValue(-MAPH/2, winH/2);
+            }
+        }
+    }
+
     void Movement(){
+
         Vector2 mousePos = GetMousePosition();
         Vector2 center = {winW / 2.0f, winH / 2.0f};
 
         Vector2 dir = {mousePos.x - center.x, mousePos.y - center.y};
+
+        if(IsKeyDown(KEY_W) && radius >= 20.0f){
+            targetRadius -=0.5f;
+            float dx = mousePos.x - center.x;
+            float dy = mousePos.y - center.y;
+            float ejectSpeed = GetRandomValue(300.0f, 500.0f);
+
+            float len = sqrtf(dx*dx+dy*dy);
+            if (len > 0.0f){
+                dx /= len;
+                dy /= len;
+            }
+
+            float angleOffset = GetRandomValue(-15, 15) * (PI / 180.0f);
+            float cosA = cosf(angleOffset);
+            float sinA = sinf(angleOffset);
+            float rdx = dx*cosA - dy*sinA;
+            float rdy = dx*sinA + dy*cosA;
+
+
+            Food food;
+            food.posX = posX + rdx * (radius + food.radius + 2.0f);
+            food.posY = posY + rdy * (radius + food.radius + 2.0f);
+            food.velX = rdx * ejectSpeed;
+            food.velY = rdy * ejectSpeed;
+            food.color = color;
+
+            foods->push_back(food);
+
+        }
+        if(IsKeyPressed(KEY_SPACE) && radius >= 20.0f){
+
+            targetRadius /=2;
+            speed = 200.0f * pow(radius, -0.439);
+        }
+
+        
         
 
         float len = sqrt(dir.x * dir.x + dir.y* dir.y);
@@ -170,18 +234,7 @@ class Player: public Entity{
         
     }
 
-    void eatFood(){
-        for (auto& food : *foods){
-            float dx = posX - food.posX;
-            float dy = posY - food.posY;
-            if (sqrt(dx*dx+dy*dy) < radius ){
-                radius += 0.5f;
-                speed = 200.0f * pow(radius, -0.439);
-                food.posX = GetRandomValue(-MAPW/2,MAPW/2);
-                food.posY = GetRandomValue(-MAPH/2, winH/2);
-            }
-        }
-    }
+    
 
     void eatEnemy(){
         for (auto& enemy : *enemies){
@@ -191,7 +244,7 @@ class Player: public Entity{
 
             if (distance < radius || distance < enemy.radius){
                 if(radius > enemy.radius*1.2f){
-                    radius += enemy.radius * 0.2f;
+                    targetRadius += enemy.radius * 0.2f;
                     speed = 200.0f * pow(radius, -0.439);
                     enemy.posX = GetRandomValue(-MAPW/2,MAPW/2);
                     enemy.posY = GetRandomValue(-MAPH/2, winH/2);
@@ -254,7 +307,8 @@ int main(){
     }
 
     Player player(enemyList, foodList);
-    player.radius = 10.0f;
+    player.radius = 200.0f;
+    player.targetRadius = 200.0f;
 
 
     
@@ -286,6 +340,7 @@ int main(){
                     
 
                 for (auto& food : foodList){
+                    food.Update();
                     food.drawEntity(false);
                 }
                 for (auto& enemy : enemyList){
