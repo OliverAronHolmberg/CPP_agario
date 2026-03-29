@@ -2,6 +2,7 @@
 #include <cmath>
 #include <iostream>
 #include <list>
+#include <vector>
 
 
 int winW = 1080;
@@ -9,9 +10,9 @@ int winH = 720;
 int targetFPS = 60;
 const int MAPW = 4000;
 const int MAPH = 3000;
-int foodAmount = 1500;
-int enemyAmount = 60;
-bool DebugMode = false;
+int foodAmount = 500;
+int enemyAmount = 50;
+bool DebugMode = true;
 bool running = true;
 const Color BG = {27, 27, 27, 255};
 
@@ -75,11 +76,15 @@ class Food: public Entity{
     }
 
     void Update(){
-        posX += velX*GetFrameTime();
+        if (fabsf(velX) > 0.1f || fabsf(velY) > 0.1f){
+        posX += velX * GetFrameTime();
         posY += velY * GetFrameTime();
-
         velX *= 0.90f;
         velY *= 0.90f;
+        }
+        else {
+            velX = 0; velY = 0;
+        }
     }
 };
 
@@ -116,15 +121,19 @@ class PlayerCell : public Entity{
 
 class Player{
     public: 
-    std::list<PlayerCell> cells;
-    std::list<Player>* players;
-    std::list<Food>* foods;
+    std::vector<PlayerCell> cells;
+    std::vector<Player>* players;
+    std::vector<Food>* foods;
     Camera2D camera = {0};
     std::string name;
     Color color;
     bool isAI = false;
-    float playerRadius = 10.0f;
-    Player(std::list<Player>& playerList, std::list<Food>& foodList, float x, float y, Color c, std::string n, bool ai){
+    float playerRadius = 190.0f;
+    float AIWanderTimer = 0.0f;
+    float AISplitTimer = 0.0f;
+    float AIEjectTimer = 0.0f;
+    Vector2 AIWanderTarget = {0, 0};
+    Player(std::vector<Player>& playerList, std::vector<Food>& foodList, float x, float y, Color c, std::string n, bool ai){
         isAI = ai;
         color = c;
         name = n;
@@ -132,7 +141,9 @@ class Player{
         foods = &foodList;
 
         float startRadius = ai ? (float)GetRandomValue(10, 200) : playerRadius;
+        cells.reserve(16);
         cells.emplace_back(startRadius, x, y, c, n);
+        
 
         if (!isAI){
             camera.offset = (Vector2{winW/2.0f, winH/2.0f});
@@ -166,6 +177,9 @@ class Player{
 
 
     void UpdateCamera(){
+        if (playerRadius >= 500){
+            playerRadius = 500;
+        }
         if (isAI) return;
         Vector2 center = getCenter();
         float maxDist = getLargestRadius();
@@ -238,35 +252,129 @@ class Player{
                 if (cell.targetRadius >= 20.0f) {
                     float dx = mouseWorldPos.x - cell.posX;
                     float dy = mouseWorldPos.y - cell.posY;
-                    float baseAngle = atan2f(dy, dx); 
+                    float baseAngle = atan2f(dy, dx);
 
-                    float ejectR = 5.0f; 
+                    float ejectR = 5.0f;
                     float currentArea = cell.targetRadius * cell.targetRadius;
-                    float foodArea = ejectR * ejectR;
-                    cell.targetRadius = sqrtf(currentArea - foodArea);
+                    cell.targetRadius = sqrtf(currentArea - ejectR * ejectR);
 
-                    float randomOffset = (GetRandomValue(-100, 100) / 1000.0f); 
+                    float randomOffset = (GetRandomValue(-100, 100) / 1000.0f);
                     float finalAngle = baseAngle + randomOffset;
-
                     float ndx = cosf(finalAngle);
                     float ndy = sinf(finalAngle);
 
-                    Food f;
-                    f.radius = ejectR;
-                    f.posX = cell.posX + ndx * (cell.radius + 5.0f);
-                    f.posY = cell.posY + ndy * (cell.radius + 5.0f);
-
-                    f.velX = ndx * 600.0f; 
-                    f.velY = ndy * 600.0f;
-                    
-                    f.color = color;
-                    foods->push_back(f);
+                    int idx = GetRandomValue(0, foods->size() - 1);
+                    (*foods)[idx].posX = cell.posX + ndx * (cell.radius + 5.0f);
+                    (*foods)[idx].posY = cell.posY + ndy * (cell.radius + 5.0f);
+                    (*foods)[idx].velX = ndx * 600.0f;
+                    (*foods)[idx].velY = ndy * 600.0f;
+                    (*foods)[idx].color = color;
                 }
             }
         }
     } else {
-        
-    }
+        Vector2 myCenter = getCenter();
+        float myR = 0;
+        for (auto& cell : cells) myR += cell.targetRadius * cell.targetRadius;
+        myR = sqrtf(myR);
+
+        float dx = 0;
+        float dy = 0;
+        bool foundTarget = false;
+
+        for (auto& other : *players){
+            if (&other == this) continue;
+            if (other.cells.empty()) continue;
+
+            Vector2 otherCenter = other.getCenter();
+            float otherR = 0;
+            for (auto& cell : other.cells) otherR += cell.targetRadius * cell.targetRadius;
+            otherR = sqrtf(otherR);
+
+            float ex = otherCenter.x - myCenter.x;
+            float ey = otherCenter.y - myCenter.y;
+            float dist = sqrtf(ex*ex + ey*ey);
+
+            if (dist > myR * 12.0f) continue;
+
+            if (myR > otherR * 1.15f) {
+            dx = ex; dy = ey;
+            if (AISplitTimer > 0.0f) AISplitTimer -= GetFrameTime();
+            if (dist < myR * 1.5f && AISplitTimer <= 0.0f && cells.size() < 8 && myR > 80.0f) {
+                std::list<PlayerCell> toAdd;
+                for (auto& cell : cells) {
+                    if (cell.targetRadius >= 35.0f) {
+                        float newR = cell.targetRadius / sqrtf(2.0f);
+                        cell.targetRadius = newR;
+                        cell.radius = newR;
+                        float len = sqrtf(ex*ex + ey*ey);
+                        float ndx = ex/len, ndy = ey/len;
+                        PlayerCell nc(newR, cell.posX + ndx*(newR+10), cell.posY + ndy*(newR+10), color, name);
+                        nc.velX = ndx * 800.0f;
+                        nc.velY = ndy * 800.0f;
+                        nc.mergeTimer = cell.mergeTimer = 15.0f;
+                        toAdd.push_back(nc);
+                    }
+                }
+                for (auto& nc : toAdd) cells.push_back(nc);
+                AISplitTimer = 10.0f; 
+            }
+        } else if (otherR > myR * 1.15f) {
+            dx = -ex; dy = -ey;
+            if (AIEjectTimer > 0.0f) AIEjectTimer -= GetFrameTime();
+            if (myR > 50.0f && AIEjectTimer <= 0.0f) {
+                for (auto& cell : cells) {
+                    if (cell.targetRadius >= 20.0f) {
+                        float len = sqrtf(ex*ex + ey*ey);
+                        float baseAngle = atan2f(-ey, -ex);
+                        float randomOffset = (GetRandomValue(-100, 100) / 1000.0f);
+                        float finalAngle = baseAngle + randomOffset;
+                        float ndx = cosf(finalAngle);
+                        float ndy = sinf(finalAngle);
+
+                        float ejectR = 5.0f;
+                        cell.targetRadius = sqrtf(cell.targetRadius*cell.targetRadius - ejectR*ejectR);
+
+                        int idx = GetRandomValue(0, foods->size() - 1);
+                        (*foods)[idx].posX = cell.posX + ndx * (cell.radius + 5.0f);
+                        (*foods)[idx].posY = cell.posY + ndy * (cell.radius + 5.0f);
+                        (*foods)[idx].velX = ndx * 600.0f;
+                        (*foods)[idx].velY = ndy * 600.0f;
+                        (*foods)[idx].color = color;
+                    }
+                }
+                AIEjectTimer = 0.5f; 
+            }
+        }
+            
+            foundTarget = true;
+            break;
+        }
+
+        if(!foundTarget){
+            AIWanderTimer -= GetFrameTime();
+            if (AIWanderTimer <= 0.0f){
+                AIWanderTarget = {
+                    (float)GetRandomValue(-MAPW/2, MAPW/2),
+                    (float)GetRandomValue(-MAPH/2, MAPH/2)
+                };
+                AIWanderTimer = (float)GetRandomValue(3, 8); 
+            }
+            dx = AIWanderTarget.x - myCenter.x;
+            dy = AIWanderTarget.y - myCenter.y;
+        }
+
+        float len = sqrtf(dx*dx+dy*dy);
+            if(len > 5.0f){
+                dx /= len;
+                dy /= len;
+                for (auto& cell : cells){
+                    cell.posX += dx * cell.speed * GetFrameTime();
+                    cell.posY += dy * cell.speed * GetFrameTime();
+                }
+            }
+        }
+    
 
   
     for (auto& cell : cells) {
@@ -305,48 +413,54 @@ class Player{
             for (auto& food : *foods){
                 float ddx = cell.posX - food.posX;
                 float ddy = cell.posY - food.posY;
-                if (sqrt(ddx*ddx+ddy*ddy) < cell.radius ){
-                    cell.targetRadius = sqrt(cell.targetRadius*cell.targetRadius + food.radius*food.radius);
-                    food.radius = 5.0f;
-                    food.posX = GetRandomValue(-MAPW/2,MAPW/2);
+                if (fabsf(ddx) > cell.radius || fabsf(ddy) > cell.radius) continue;
+                if (sqrtf(ddx*ddx+ddy*ddy) < cell.radius){
+                    cell.targetRadius = sqrtf(cell.targetRadius*cell.targetRadius + food.radius*food.radius);
+                    food.posX = GetRandomValue(-MAPW/2, MAPW/2);
                     food.posY = GetRandomValue(-MAPH/2, MAPH/2);
+                    food.color = {(unsigned char)GetRandomValue(0,255),(unsigned char)GetRandomValue(0,255),(unsigned char)GetRandomValue(0,255),255};
                 }
             }
         }
-        
     }
-
-
     
 
     
 
     void eatEnemy() {
+    Vector2 myCenter = getCenter();
     for (auto& myCell : cells) {
         for (auto& otherPlayer : *players) {
             if (&otherPlayer == this) continue;
+            if (otherPlayer.cells.empty()) continue;
+
+          
+            Vector2 otherCenter = otherPlayer.getCenter();
+            float cdx = myCenter.x - otherCenter.x;
+            float cdy = myCenter.y - otherCenter.y;
+            if (cdx*cdx + cdy*cdy > 800.0f * 800.0f) continue;
 
             for (auto it = otherPlayer.cells.begin(); it != otherPlayer.cells.end(); ) {
                 float ddx = myCell.posX - it->posX;
                 float ddy = myCell.posY - it->posY;
-                float distanceSq = ddx * ddx + ddy * ddy; 
-                
-                
-                if (distanceSq < (myCell.radius * myCell.radius)) { 
+                float distanceSq = ddx * ddx + ddy * ddy;
+
+                if (distanceSq < (myCell.radius * myCell.radius)) {
                     if (myCell.targetRadius > it->radius * 1.15f) {
-                        
                         myCell.targetRadius = sqrtf(myCell.targetRadius * myCell.targetRadius + it->radius * it->radius);
-                        
+
                         if (otherPlayer.isAI) {
-                            
-                            it->posX = GetRandomValue(-MAPW/2, MAPW/2);
-                            it->posY = GetRandomValue(-MAPH/2, MAPH/2);
-                            it->targetRadius = GetRandomValue(20, 50);
-                            it->color = {(unsigned char)GetRandomValue(0, 255), (unsigned char)GetRandomValue(0, 255), (unsigned char)GetRandomValue(0, 255), 255};
-                            it->radius = it->targetRadius;
-                            ++it;
+                            it = otherPlayer.cells.erase(it);
+                            if (otherPlayer.cells.empty()) {
+                                float newR = GetRandomValue(20, 50);
+                                float newX = GetRandomValue(-MAPW/2, MAPW/2);
+                                float newY = GetRandomValue(-MAPH/2, MAPH/2);
+                                Color newCol = {(unsigned char)GetRandomValue(0,255),(unsigned char)GetRandomValue(0,255),(unsigned char)GetRandomValue(0,255),255};
+                                otherPlayer.cells.emplace_back(newR, newX, newY, newCol, otherPlayer.name);
+                                otherPlayer.color = newCol;
+                                break;
+                            }
                         } else {
-                            
                             it = otherPlayer.cells.erase(it);
                         }
                     } else {
@@ -383,7 +497,8 @@ int main(){
     
     
     
-    std::list<Food> foodList;
+    std::vector<Food> foodList;
+    foodList.reserve(2500);
 
     for (int i = 0; i <= foodAmount; i++){
         Food food;
@@ -394,7 +509,8 @@ int main(){
     }
 
 
-    std::list<Player> playerList;
+    std::vector<Player> playerList;
+    playerList.reserve(70);
     playerList.emplace_back(playerList, foodList, 0.0f, 0.0f, WHITE, "Player", false);
 
     for (int i = 0; i <= enemyAmount; i++){
@@ -404,7 +520,7 @@ int main(){
         
         Color randomCol = {(unsigned char)GetRandomValue(0, 255), (unsigned char)GetRandomValue(0, 255), (unsigned char)GetRandomValue(0, 255), 255};
         
-        playerList.emplace_front(playerList, foodList, GetRandomValue((-MAPW/2), (MAPW/2)), GetRandomValue((-MAPH/2), (MAPH/2)), randomCol, *it, true);
+        playerList.emplace_back(playerList, foodList, GetRandomValue((-MAPW/2), (MAPW/2)), GetRandomValue((-MAPH/2), (MAPH/2)), randomCol, *it, true);
     }
 
     
