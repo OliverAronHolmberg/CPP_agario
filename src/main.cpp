@@ -342,6 +342,7 @@ class Player{
                             it->posX = GetRandomValue(-MAPW/2, MAPW/2);
                             it->posY = GetRandomValue(-MAPH/2, MAPH/2);
                             it->targetRadius = GetRandomValue(20, 50);
+                            it->color = {(unsigned char)GetRandomValue(0, 255), (unsigned char)GetRandomValue(0, 255), (unsigned char)GetRandomValue(0, 255), 255};
                             it->radius = it->targetRadius;
                             ++it;
                         } else {
@@ -378,7 +379,7 @@ int main(){
     SetTargetFPS(targetFPS);
     Image icon = LoadImage("resources/Cell_in-game_2.png");
     SetWindowIcon(icon);
-
+    SetExitKey(0);
     
     
     
