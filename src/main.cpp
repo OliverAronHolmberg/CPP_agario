@@ -11,10 +11,11 @@ int targetFPS = 60;
 const int MAPW = 4000;
 const int MAPH = 3000;
 int foodAmount = 500;
-int enemyAmount = 50;
+int enemyAmount = 40;
 bool DebugMode = true;
-bool running = true;
+bool running = false;
 const Color BG = {27, 27, 27, 255};
+bool fullScreen = false;
 
 std::list<std::string> names = {
     "Spectral", "Vortex", "Apex", "Lunar", "Rift", "Zephyr", "Kinetix", "Nova",
@@ -481,54 +482,56 @@ class Player{
 
 };
 
+void createFood(std::vector<Food>& foodList) {
+    foodList.clear();
+    foodList.reserve(2500);
+    for (int i = 0; i <= foodAmount; i++){
+        Food food;
+        food.posX = GetRandomValue(-MAPW/2, MAPW/2);
+        food.posY = GetRandomValue(-MAPH/2, MAPH/2);
+        food.color = {(unsigned char)GetRandomValue(0,255),(unsigned char)GetRandomValue(0,255),(unsigned char)GetRandomValue(0,255),255};
+        foodList.push_back(food);
+    }
+}
 
+void createPlayers(std::vector<Player>& playerList, std::vector<Food>& foodList, std::string playerName, Color playerColor) {
+    playerList.clear();
+    playerList.reserve(70);
+    for (int i = 0; i <= enemyAmount; i++){
+        int randomIDX = GetRandomValue(0, names.size()-1);
+        auto it = names.begin();
+        std::advance(it, randomIDX);
+        Color randomCol = {(unsigned char)GetRandomValue(0,255),(unsigned char)GetRandomValue(0,255),(unsigned char)GetRandomValue(0,255),255};
+        playerList.emplace_back(playerList, foodList, GetRandomValue(-MAPW/2,MAPW/2), GetRandomValue(-MAPH/2,MAPH/2), randomCol, *it, true);
+    }
+    playerList.emplace_back(playerList, foodList, 0.0f, 0.0f, playerColor, playerName, false);
+}
 
 
 
 
 int main(){
 
-    SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
-    InitWindow(winW, winH, "Agario");
+    if(fullScreen){
+        SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI | FLAG_FULLSCREEN_MODE | FLAG_WINDOW_TOPMOST | FLAG_WINDOW_UNDECORATED);
+        InitWindow(0, 0, "Agario");
+        winW = GetScreenWidth();
+        winH = GetScreenHeight();
+    }else{
+        SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
+        InitWindow(winW, winH, "Agario");
+    }
+    
+    
     SetTargetFPS(targetFPS);
     Image icon = LoadImage("resources/Cell_in-game_2.png");
     SetWindowIcon(icon);
     SetExitKey(0);
     
-    
-    
+
     std::vector<Food> foodList;
-    foodList.reserve(2500);
-
-    for (int i = 0; i <= foodAmount; i++){
-        Food food;
-        food.posX = GetRandomValue((-MAPW/2), (MAPW/2));
-        food.posY = GetRandomValue((-MAPH/2), (MAPH/2));
-        food.color = {(unsigned char)GetRandomValue(0, 255), (unsigned char)GetRandomValue(0, 255), (unsigned char)GetRandomValue(0, 255), 255};
-        foodList.push_back(food);
-    }
-
-
     std::vector<Player> playerList;
-    playerList.reserve(70);
-    playerList.emplace_back(playerList, foodList, 0.0f, 0.0f, WHITE, "Player", false);
-
-    for (int i = 0; i <= enemyAmount; i++){
-        int randomIDX = GetRandomValue(0, names.size() -1);
-        auto it = names.begin();
-        std::advance(it, randomIDX);
-        
-        Color randomCol = {(unsigned char)GetRandomValue(0, 255), (unsigned char)GetRandomValue(0, 255), (unsigned char)GetRandomValue(0, 255), 255};
-        
-        playerList.emplace_back(playerList, foodList, GetRandomValue((-MAPW/2), (MAPW/2)), GetRandomValue((-MAPH/2), (MAPH/2)), randomCol, *it, true);
-    }
-
     
-
-
-
-    
-
     
 
     while (!WindowShouldClose()){
@@ -545,9 +548,13 @@ int main(){
             player.UpdateCamera();
         }
 
+        if (running && realPlayer != nullptr && realPlayer->cells.empty()) {
+            running = false;
+        }
+
         BeginDrawing();
         ClearBackground(BG);
-            if (running && realPlayer != nullptr){
+            if (running && realPlayer != nullptr && !realPlayer->cells.empty()){
                 
                 BeginMode2D(realPlayer->camera);
 
@@ -563,6 +570,7 @@ int main(){
                 }
                 for (auto& player : playerList){
                     player.draw();
+
                 }
                 
 
@@ -572,7 +580,14 @@ int main(){
 
             EndMode2D();
             }else{
-                std::cout<<"Meny\n";
+                ClearBackground(BG);
+                
+                if(IsKeyPressed(KEY_TAB)){
+                    createFood(foodList);
+                    createPlayers(playerList, foodList, "Player", WHITE);
+                    running = true;
+                    
+                }
             }
        
             
